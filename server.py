@@ -6,9 +6,10 @@ import wave
 from fastapi import FastAPI
 from pydantic import BaseModel
 from piper import PiperVoice
+from piper.config import SynthesisConfig
 
 DEVICE = "alsa_output.pci-0000_0d_00.4.analog-stereo"
-MODEL = os.path.join(os.path.dirname(__file__), "en_US-lessac-medium.onnx")
+MODEL = os.path.join(os.path.dirname(__file__), "en_GB-alba-medium.onnx")
 
 voice = PiperVoice.load(MODEL)
 app = FastAPI()
@@ -24,7 +25,7 @@ def speak(req: SpeakRequest):
         wav_path = f.name
     try:
         with wave.open(wav_path, "wb") as wav_file:
-            voice.synthesize_wav(req.text, wav_file)
+            voice.synthesize_wav(req.text, wav_file, syn_config=SynthesisConfig(length_scale=1.2))
         subprocess.run(["paplay", f"--device={DEVICE}", wav_path])
     finally:
         os.unlink(wav_path)

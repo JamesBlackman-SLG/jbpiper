@@ -1,0 +1,10 @@
+services:
+  piper-tts:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "39271:39271"
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    volumes:
+      - /run/user/1000/pulse/native:/run/user/1000/pulse/native
