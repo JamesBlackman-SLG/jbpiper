@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir piper-tts==1.4.1 fastapi==0.129.0 uvicorn==0.40.0
 WORKDIR /app
 COPY server.py .
 COPY en_GB-alba-medium.onnx en_GB-alba-medium.onnx.json ./
+COPY en_GB-northern_english_male-medium.onnx en_GB-northern_english_male-medium.onnx.json ./
 
 EXPOSE 39271
 

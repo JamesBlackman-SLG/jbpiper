@@ -5,7 +5,7 @@ from piper import PiperVoice
 from piper.config import SynthesisConfig
 
 DEVICE = "alsa_output.pci-0000_0d_00.4.analog-stereo"
-MODEL = "en_GB-alba-medium.onnx"
+MODEL = "en_GB-alan-medium.onnx"
 TEXT = "Good morning James, how are things going?"
 
 voice = PiperVoice.load(MODEL)
