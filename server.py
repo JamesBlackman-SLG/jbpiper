@@ -1,5 +1,7 @@
 import asyncio
+import math
 import os
+import struct
 import subprocess
 import tempfile
 import wave
@@ -32,8 +34,12 @@ async def speech_worker():
         if not first:
             await asyncio.sleep(GAP_SECONDS)
         first = False
-        voice = loaded_voices[voice_name]
-        await asyncio.to_thread(_synthesize_and_play, text, voice)
+        if text == "__beep__":
+            freq, dur = voice_name.split(",")
+            await asyncio.to_thread(_generate_and_play_beep, float(freq), float(dur))
+        else:
+            voice = loaded_voices[voice_name]
+            await asyncio.to_thread(_synthesize_and_play, text, voice)
         speech_queue.task_done()
 
 
@@ -43,6 +49,27 @@ def _synthesize_and_play(text: str, voice: PiperVoice):
     try:
         with wave.open(wav_path, "wb") as wav_file:
             voice.synthesize_wav(text, wav_file, syn_config=SynthesisConfig(length_scale=1.2))
+        subprocess.run(["paplay", f"--device={DEVICE}", wav_path])
+    finally:
+        os.unlink(wav_path)
+
+
+def _generate_and_play_beep(frequency: float, duration: float):
+    sample_rate = 22050
+    num_samples = int(sample_rate * duration)
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        wav_path = f.name
+    try:
+        with wave.open(wav_path, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            samples = bytearray()
+            for i in range(num_samples):
+                t = i / sample_rate
+                value = int(32767 * 0.8 * math.sin(2 * math.pi * frequency * t))
+                samples += struct.pack("<h", value)
+            wav_file.writeframes(bytes(samples))
         subprocess.run(["paplay", f"--device={DEVICE}", wav_path])
     finally:
         os.unlink(wav_path)
@@ -72,6 +99,17 @@ async def speak(req: SpeakRequest):
         raise HTTPException(status_code=400, detail=f"Unknown voice '{req.voice}'. Available: {list(loaded_voices.keys())}")
     await speech_queue.put((req.text, req.voice))
     return {"status": "queued", "text": req.text, "voice": req.voice, "queue_size": speech_queue.qsize()}
+
+
+class BeepRequest(BaseModel):
+    frequency: float = 440.0
+    duration: float = 0.3
+
+
+@app.post("/beep")
+async def beep(req: BeepRequest):
+    await speech_queue.put(("__beep__", f"{req.frequency},{req.duration}"))
+    return {"status": "queued", "frequency": req.frequency, "duration": req.duration, "queue_size": speech_queue.qsize()}
 
 
 @app.get("/voices")
